@@ -141,6 +141,9 @@ void pbgl_state_init(void) {
   pbgl.state_dirty = GL_TRUE;
 
   pbgl.active = GL_TRUE; // this can only be used when we're live
+
+  pbgl.pixelstore_unpack_state.alignment = 4;
+  pbgl.pixelstore_unpack_state.row_length = 0;
 }
 
 static inline GLuint *flush_texunit(GLuint *p, GLuint i) {
@@ -621,7 +624,14 @@ GL_API void glLineWidth(GLfloat width) {
 }
 
 GL_API void glPixelStorei(GLenum pname, GLint param) {
-  // TODO:
+  switch(pname) {
+  case GL_UNPACK_ALIGNMENT:
+    pbgl.pixelstore_unpack_state.alignment = param;
+    break;
+  case GL_UNPACK_ROW_LENGTH:
+    pbgl.pixelstore_unpack_state.row_length = param;
+    break;
+  }
 }
 
 GL_API void glPolygonMode(GLenum face, GLenum mode) {

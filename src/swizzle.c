@@ -24,6 +24,8 @@
 #include <assert.h>
 
 #include "swizzle.h"
+#include "state.h"
+
 
 /* This should be pretty straightforward.
  * It creates a bit pattern like ..zyxzyxzyx from ..xxx, ..yyy and ..zzz
@@ -60,7 +62,9 @@ uint32_t swizzle_fill_pattern(uint32_t pattern, uint32_t value) {
   while (value) {
     if (pattern & bit) {
       /* Copy bit to result */
-      result |= value & 1 ? bit : 0;
+      if (value & 1) {
+        result |= bit;
+      }
       value >>= 1;
     }
     bit <<= 1;
@@ -78,6 +82,28 @@ static inline unsigned int swizzle_get_offset(
     | swizzle_fill_pattern(mask_z, z) );
 }
 
+static inline unsigned int swizzle_calculate_source_pitch(
+    unsigned int width, unsigned int bytes_per_pixel
+) {
+  uint32_t num_components = 4;
+  uint32_t component_size = 1;
+  uint32_t pitch;
+  uint32_t alignment_padding;
+  uint32_t row_len = pbgl.pixelstore_unpack_state.row_length;
+  if (!row_len) {
+    row_len = width;
+  }
+
+  // TODO: Support components other than 4 (e.g., GL_RGB)
+  pitch = row_len * num_components * component_size;
+  alignment_padding = pitch % pbgl.pixelstore_unpack_state.alignment;
+  if (alignment_padding) {
+    pitch += pbgl.pixelstore_unpack_state.alignment - alignment_padding;
+  }
+
+  return pitch;
+}
+
 void swizzle_box(
   const uint8_t *src_buf,
   unsigned int width,
@@ -91,16 +117,19 @@ void swizzle_box(
   uint32_t mask_x, mask_y, mask_z;
   swizzle_generate_masks(width, height, depth, &mask_x, &mask_y, &mask_z);
 
+  uint32_t src_pitch = swizzle_calculate_source_pitch(width, bytes_per_pixel);
+
   int x, y, z;
   for (z = 0; z < depth; z++) {
     for (y = 0; y < height; y++) {
-      for (x = 0; x < width; x++) {
-        const uint8_t *src = src_buf + y * row_pitch + x * bytes_per_pixel;
-        uint8_t *dst = dst_buf + swizzle_get_offset(x, y, 0, mask_x, mask_y, 0, bytes_per_pixel);
+      const uint8_t *src = src_buf + y * src_pitch;
+      for (x = 0; x < width; x++, src += bytes_per_pixel) {
+        unsigned int dst_offset = swizzle_get_offset(x, y, 0, mask_x, mask_y, 0, bytes_per_pixel);
+        uint8_t *dst = dst_buf + dst_offset;
         memcpy(dst, src, bytes_per_pixel);
       }
     }
-    src_buf += slice_pitch;
+//    src_buf += slice_pitch;
   }
 }
 

@@ -150,6 +150,11 @@ typedef struct {
 } texunit_state_t;
 
 typedef struct {
+  GLint alignment;
+  GLint row_length;
+} pixelstore_state_t;
+
+typedef struct {
   GLboolean dirty;
   GLenum frontface;
   GLenum cullface;
@@ -228,6 +233,8 @@ typedef struct {
 
   texenv_state_t texenv[TEXUNIT_COUNT];
   GLboolean texenv_dirty;
+
+  pixelstore_state_t pixelstore_unpack_state;
 
   light_state_t light[LIGHT_COUNT];
   GLboolean light_any_dirty;
